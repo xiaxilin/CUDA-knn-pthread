@@ -12,6 +12,14 @@
 #include<cuda.h>
 #include<stdlib.h>
 #include<pthread.h>
+#include<time.h>
+
+#define DEBUG
+#ifdef DEBUG
+#define TA_PRINT printf
+#else
+#define TA_PRINT(...) ;
+#endif
 
 #define INIT_MAX 10000000
 #define TILE_WIDTH 32
@@ -22,7 +30,7 @@
 void showResult(int m, int k, int *out);
 
 // compute the square of distance of the ith point and jth point
-__global__ void computeDist(int m, int n, int *V, int *D)
+__global__ void computeDist(int id, int m, int n, int *V, int *D)
 {
 	__shared__ int rowVector[TILE_WIDTH][TILE_DEPTH];
 	__shared__ int colVector[TILE_DEPTH][TILE_WIDTH];
@@ -46,6 +54,9 @@ __global__ void computeDist(int m, int n, int *V, int *D)
 			dist[py][px] = 0;
 			__syncthreads();
 		
+			if(row > id*(m/2) && row < (id+1)*(m/2))
+			{
+
 			for(int i=0; i<(int)(ceil((float)n/TILE_DEPTH)); i++)
 			{
 				for(int j=tx; j<TILE_DEPTH; j+=blockDim.x)
@@ -64,7 +75,14 @@ __global__ void computeDist(int m, int n, int *V, int *D)
 				}
 				__syncthreads();
 			}
+			
+			if(row > (m/2))
+			{
+				row -= (m/2);
+			}
+
 			D[row*m+col] = dist[py][px];
+			}
 		}
 	}
 }
@@ -357,6 +375,7 @@ void showResult(int m, int k, int *out)
 	}        	
 }            	
 
+/*
 void launch(int *V, int *out, float time)
 {
 	int *d_V, *d_out;			// device copies
@@ -408,7 +427,6 @@ void launch(int *V, int *out, float time)
 
 }
 
-/*
 int main(int argc, char *argv[]) 
 { 
 	int m,n,k;
@@ -500,15 +518,18 @@ int main(int argc, char *argv[])
 }
 */
 
+pthread_barrier_t barr;
+
 struct HYBctx{
 	int id;
 	int m;
 	int n;
 	int k;
+	int *V;
 	int *d_V;
+	int *out;
 	int *d_out;
 	int *D;
-	pthread_barrier_t barr;
 };
 /*
 void launch(struct HYBctx* ctx, int *A){
@@ -517,10 +538,15 @@ void launch(struct HYBctx* ctx, int *A){
 	cudaMemcpy(A, ctx->dA, sizeof(int)*N, cudaMemcpyDeviceToHost);
 }
 */
-void launch(struct HYBctx* ctx, int *V, int *out){
+//void launch(struct HYBctx* ctx, int *V, int *out){
+void launch(struct HYBctx* ctx){
+
+	int m = ctx->m;
+	int n = ctx->n;
+	int k = ctx->k;
 
 	// copy host values to devices copies
-	cudaMemcpy(ctx->d_V, V, m*n*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(ctx->d_V, ctx->V, m*n*sizeof(int), cudaMemcpyHostToDevice);
 
 	int gridDimX = (int)(ceil((float)m/TILE_WIDTH));
 	int gridDimY = (int)(ceil((float)m/TILE_WIDTH));
@@ -529,15 +555,15 @@ void launch(struct HYBctx* ctx, int *V, int *out){
 	dim3 block(TILE_WIDTH, TILE_WIDTH);
 
 	// launch knn() kernel on GPU
-	computeDist<<<grid, block>>>(m, n, ctx->d_V, ctx->D);
+	computeDist<<<grid, block>>>(ctx->id, m, n, ctx->d_V, ctx->D);
 	cudaDeviceSynchronize();
 
 	int threadNum = (m<MAX_BLOCK_SIZE)? m: MAX_BLOCK_SIZE;
 	int ptrNumInSMEM = (m<MAX_PTRNUM_IN_SMEM)? m: MAX_PTRNUM_IN_SMEM;
-	knn<<<m, threadNum, 2*ptrNumInSMEM*sizeof(int)>>>(m, k, ctx->d_V, ctx->D, ctx->d_out);
+	knn<<<(m/2), threadNum, 2*ptrNumInSMEM*sizeof(int)>>>(m, k, ctx->d_V, ctx->D, ctx->d_out);
 
 	// copy result back to host
-	cudaMemcpy(out, ctx->d_out, m*k*sizeof(int), cudaMemcpyDeviceToHost);
+	cudaMemcpy(ctx->out+(m/2)*k*(ctx->id), ctx->d_out, (m/2)*k*sizeof(int), cudaMemcpyDeviceToHost);
 
 }
 
@@ -548,8 +574,12 @@ int cudaInit(int rank, struct HYBctx* ctx){
 		int k = ctx->k;
 		// allocate space for devices copies
 		cudaMalloc((void **)&ctx->d_V, m*n*sizeof(int));
-		cudaMalloc((void **)&d_out, m*k*sizeof(int));
-		cudaMalloc((void **)&D, m*m*sizeof(int));
+
+//		cudaMalloc((void **)&ctx->d_out, m*k*sizeof(int));
+//		cudaMalloc((void **)&ctx->D, m*m*sizeof(int));
+
+		cudaMalloc((void **)&ctx->D, (m/2)*m*sizeof(int));
+		cudaMalloc((void **)&ctx->d_out, (m/2)*k*sizeof(int));
 
 		return 0;
 	}
@@ -563,6 +593,23 @@ void cudaDown(struct HYBctx* ctx){
 	cudaFree(ctx->D);
 }
 
+void beforeStart(struct HYBctx* ctx){
+	float *dA;
+	int i = 0;
+	while(1){
+		cudaSetDevice(ctx->id);
+		if(cudaMalloc((void**)&dA, 1024*sizeof(float))){
+			continue;
+		}
+		break;
+	}
+	cudaFree(dA);
+	TA_PRINT("you get device %d\n",ctx->id);
+}
+
+double comtime;
+
+/*
 void* GPUthread(void* arg){
 	struct HYBctx* ctx = (struct HYBctx*)arg;
 	int A[N];
@@ -595,13 +642,37 @@ void beforeStart(struct HYBctx* ctx){
 	ctx[1].id = ctx[0].id+1;
 	printf("you get device %d and %d\n",ctx[0].id, ctx[1].id);
 }
+*/
+
+void* GPUthread(void* arg){
+	struct HYBctx* ctx = (struct HYBctx*)arg;
+	struct timespec start, end;
+	int i;
+	if(ctx->id == 0) beforeStart(ctx);
+	pthread_barrier_wait(&barr);
+	if(ctx->id == 1) beforeStart(ctx);
+	if(!cudaInit(ctx->id, ctx)) TA_PRINT("GPU thread %d\n", ctx->id);
+	pthread_barrier_wait(&barr);
+	clock_gettime(CLOCK_REALTIME,&start);
+	pthread_barrier_wait(&barr);
+
+	launch(ctx);
+	
+	pthread_barrier_wait(&barr);
+	clock_gettime(CLOCK_REALTIME,&end);
+	if(ctx->id == 0)
+		comtime = (double)(end.tv_sec-start.tv_sec)+(double)(end.tv_nsec-start.tv_nsec)/(double)1000000000L;
+	TA_PRINT("GPU thread %d result: %d\n",ctx->id, A[0]);
+	cudaDown(ctx);
+	return NULL;
+}
+
 
 int main(int argc, char* argv[]){
 	int i;
 	int GPU_num = 2;
 
 	int m,n,k;
-	int i;
 	int *V, *out;				// host copies
 	int *D;						
 	FILE *fp;
@@ -630,7 +701,8 @@ int main(int argc, char* argv[]){
 	beforeStart(ctx);
 	void *pt;
 	pt = malloc(sizeof(pthread_t)*(GPU_num));
-
+	pthread_barrier_init(&barr, NULL, 2);
+/*	
 	// compute the execution time
 	cudaEvent_t start, stop;
 	// create event
@@ -638,31 +710,33 @@ int main(int argc, char* argv[]){
 	cudaEventCreate(&stop);
 	// record event
 	cudaEventRecord(start);
-
+*/
 	for(i = 0; i< GPU_num; i++){
 		ctx[i].id = i;
 		ctx[i].m = m;
 		ctx[i].n = n;
 		ctx[i].k = k;
 		ctx[i].V = V;
+		ctx[i].out = out;
 		pthread_create(&((pthread_t*)pt)[i], NULL, GPUthread, (void*)&ctx[i]);
 	}
 	for(i = 0; i< GPU_num; i++)
 		pthread_join(((pthread_t*)pt)[i], NULL);
+        TA_PRINT("\t%f\n",comtime);
+	pthread_barrier_destroy(&barr);
 
-
+/*
 	// record event and synchronize
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
 	float time;
 	// get event elapsed time
 	cudaEventElapsedTime(&time, start, stop);
-
-
+*/
 	cudaDeviceReset();
 
-
 	showResult(m, k, out);
+/*
 	if(m == 1024) {
 		printf("SMALL:");
 	} else if(m == 4096) {
@@ -671,7 +745,7 @@ int main(int argc, char* argv[]){
 		printf("LARGE:");
 	}
 	printf("%f\n", time);
-
+*/
 	free(V);
 	free(out);
 	fclose(fp);
