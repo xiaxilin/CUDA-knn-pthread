@@ -14,7 +14,7 @@
 #include<pthread.h>
 #include<time.h>
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #define TA_PRINT printf
 #else
@@ -54,8 +54,8 @@ __global__ void computeDist(int id, int m, int n, int *V, int *D)
 			dist[py][px] = 0;
 			__syncthreads();
 		
-//			if(row > id*(m/2) && row < (id+1)*(m/2))
-//			{
+			if(row >= id*(m/2) && row < (id+1)*(m/2))
+			{
 
 				for(int i=0; i<(int)(ceil((float)n/TILE_DEPTH)); i++)
 				{
@@ -76,13 +76,13 @@ __global__ void computeDist(int id, int m, int n, int *V, int *D)
 					__syncthreads();
 				}
 				
-//				if(row > (m/2))
-//				{
-//					row -= (m/2);
-//				}
-//
+				if(row >= (m/2))
+				{
+					row -= (m/2);
+				}
+
 				D[row*m+col] = dist[py][px];
-//			}
+			}
 		}
 	}
 }
@@ -110,7 +110,8 @@ __device__ int findMin(int id, int m, int k, int count, int *D, int *out)
 			}
 			else
 			{
-				SMem[j] = D[(i + (m/2)*id) *m+num+j];
+//				SMem[j] = D[(i + (m/2)*id) *m+num+j];
+				SMem[j] = D[i*m+num+j];
 			}
 			//index
 			SMem[indexBase+j] = j+num;
@@ -136,7 +137,6 @@ __device__ int findMin(int id, int m, int k, int count, int *D, int *out)
 			__syncthreads();
 		}
 		__syncthreads();
-
 //		for(s=indexBase/2; s>0; s>>=1) 
 		for(s=indexBase/2; s>32; s>>=1) 
 		{
@@ -243,7 +243,6 @@ __device__ int findMin(int id, int m, int k, int count, int *D, int *out)
 */
 		if(tid < 32)
 		{
-			/*
 			#pragma unroll 5
 			for(s=32; s>0; s>>=1)
 			{ 
@@ -260,7 +259,7 @@ __device__ int findMin(int id, int m, int k, int count, int *D, int *out)
 					SMem[indexBase+tid] = SMem[indexBase+tid+s];
 				}
 			}
-			*/
+/*
 			if(SMem[tid] == SMem[tid+32])
 			{
 				if(SMem[indexBase+tid] > SMem[indexBase+tid+32])
@@ -333,6 +332,7 @@ __device__ int findMin(int id, int m, int k, int count, int *D, int *out)
 				SMem[tid] = SMem[tid+1];
 				SMem[indexBase+tid] = SMem[indexBase+tid+1];
 			}
+*/
 		}
 	
 		__syncthreads();
@@ -368,7 +368,7 @@ __global__ void knn(int id, int m, int k, int *V, int *D, int *out)
 		__syncthreads();
 	}
 }
-extern "C"
+//extern "C"
 
 void showResult(int m, int k, int *out)
 {
@@ -587,9 +587,9 @@ int cudaInit(int rank, struct HYBctx* ctx){
 		cudaMalloc((void **)&ctx->d_V, m*n*sizeof(int));
 
 //		cudaMalloc((void **)&ctx->d_out, m*k*sizeof(int));
-		cudaMalloc((void **)&ctx->D, m*m*sizeof(int));
+//		cudaMalloc((void **)&ctx->D, m*m*sizeof(int));
 
-//		cudaMalloc((void **)&ctx->D, (m/2)*m*sizeof(int));
+		cudaMalloc((void **)&ctx->D, (m/2)*m*sizeof(int));
 		cudaMalloc((void **)&ctx->d_out, (m/2)*k*sizeof(int));
 
 		return 0;
@@ -747,6 +747,7 @@ int main(int argc, char* argv[]){
 	cudaDeviceReset();
 
 	showResult(m, k, out);
+	printf("%f\n", comtime);
 /*
 	if(m == 1024) {
 		printf("SMALL:");
