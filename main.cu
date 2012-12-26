@@ -27,8 +27,6 @@
 #define MAX_BLOCK_SIZE 256
 #define MAX_PTRNUM_IN_SMEM 1024 
 
-//void showResult(int m, int k, int *out);
-
 // compute the square of distance of the ith point and jth point
 __global__ void computeDist(int id, int m, int n, int *V, int *D)
 {
@@ -160,87 +158,6 @@ __device__ int findMin(int id, int m, int k, int count, int *D, int *out)
 				__syncthreads();
 			}
 		}
-/*
-		if(indexBase >= 1024)
-		{
-			if(tid < 512) 
-			{
-				if(SMem[tid] == SMem[tid+512])
-				{
-					if(SMem[indexBase+tid] > SMem[indexBase+tid+512])
-					{
-						SMem[indexBase+tid] = SMem[indexBase+tid+512];
-					}
-				}
-				else if(SMem[tid] > SMem[tid+512])
-				{
-					SMem[tid] = SMem[tid+512];
-					SMem[indexBase+tid] = SMem[indexBase+tid+512];
-				}
-			}
-			__syncthreads();
-		}
-
-		if(indexBase >= 512)
-		{
-			if(tid < 256) 
-			{
-				if(SMem[tid] == SMem[tid+256])
-				{
-					if(SMem[indexBase+tid] > SMem[indexBase+tid+256])
-					{
-						SMem[indexBase+tid] = SMem[indexBase+tid+256];
-					}
-				}
-				else if(SMem[tid] > SMem[tid+256])
-				{
-					SMem[tid] = SMem[tid+256];
-					SMem[indexBase+tid] = SMem[indexBase+tid+256];
-				}
-			}
-			__syncthreads();
-		}
-
-		if(indexBase >= 256)
-		{
-			if(tid < 128) 
-			{
-				if(SMem[tid] == SMem[tid+128])
-				{
-					if(SMem[indexBase+tid] > SMem[indexBase+tid+128])
-					{
-						SMem[indexBase+tid] = SMem[indexBase+tid+128];
-					}
-				}
-				else if(SMem[tid] > SMem[tid+128])
-				{
-					SMem[tid] = SMem[tid+128];
-					SMem[indexBase+tid] = SMem[indexBase+tid+128];
-				}
-			}
-			__syncthreads();
-		}
-
-		if(indexBase >= 128)
-		{
-			if(tid < 64) 
-			{
-				if(SMem[tid] == SMem[tid+64])
-				{
-					if(SMem[indexBase+tid] > SMem[indexBase+tid+64])
-					{
-						SMem[indexBase+tid] = SMem[indexBase+tid+64];
-					}
-				}
-				else if(SMem[tid] > SMem[tid+64])
-				{
-					SMem[tid] = SMem[tid+64];
-					SMem[indexBase+tid] = SMem[indexBase+tid+64];
-				}
-			}
-			__syncthreads();
-		}
-*/
 		if(tid < 32)
 		{
 			#pragma unroll 5
@@ -259,80 +176,6 @@ __device__ int findMin(int id, int m, int k, int count, int *D, int *out)
 					SMem[indexBase+tid] = SMem[indexBase+tid+s];
 				}
 			}
-/*
-			if(SMem[tid] == SMem[tid+32])
-			{
-				if(SMem[indexBase+tid] > SMem[indexBase+tid+32])
-				{
-					SMem[indexBase+tid] = SMem[indexBase+tid+32];
-				}
-			}
-			else if(SMem[tid] > SMem[tid+32])
-			{
-				SMem[tid] = SMem[tid+32];
-				SMem[indexBase+tid] = SMem[indexBase+tid+32];
-			}
-			if(SMem[tid] == SMem[tid+16])
-			{
-				if(SMem[indexBase+tid] > SMem[indexBase+tid+16])
-				{
-					SMem[indexBase+tid] = SMem[indexBase+tid+16];
-				}
-			}
-			else if(SMem[tid] > SMem[tid+16])
-			{
-				SMem[tid] = SMem[tid+16];
-				SMem[indexBase+tid] = SMem[indexBase+tid+16];
-			}
-			if(SMem[tid] == SMem[tid+8])
-			{
-				if(SMem[indexBase+tid] > SMem[indexBase+tid+8])
-				{
-					SMem[indexBase+tid] = SMem[indexBase+tid+8];
-				}
-			}
-			else if(SMem[tid] > SMem[tid+8])
-			{
-				SMem[tid] = SMem[tid+8];
-				SMem[indexBase+tid] = SMem[indexBase+tid+8];
-			}
-			if(SMem[tid] == SMem[tid+4])
-			{
-				if(SMem[indexBase+tid] > SMem[indexBase+tid+4])
-				{
-					SMem[indexBase+tid] = SMem[indexBase+tid+4];
-				}
-			}
-			else if(SMem[tid] > SMem[tid+4])
-			{
-				SMem[tid] = SMem[tid+4];
-				SMem[indexBase+tid] = SMem[indexBase+tid+4];
-			}
-			if(SMem[tid] == SMem[tid+2])
-			{
-				if(SMem[indexBase+tid] > SMem[indexBase+tid+2])
-				{
-					SMem[indexBase+tid] = SMem[indexBase+tid+2];
-				}
-			}
-			else if(SMem[tid] > SMem[tid+2])
-			{
-				SMem[tid] = SMem[tid+2];
-				SMem[indexBase+tid] = SMem[indexBase+tid+2];
-			}
-			if(SMem[tid] == SMem[tid+1])
-			{
-				if(SMem[indexBase+tid] > SMem[indexBase+tid+1])
-				{
-					SMem[indexBase+tid] = SMem[indexBase+tid+1];
-				}
-			}
-			else if(SMem[tid] > SMem[tid+1])
-			{
-				SMem[tid] = SMem[tid+1];
-				SMem[indexBase+tid] = SMem[indexBase+tid+1];
-			}
-*/
 		}
 	
 		__syncthreads();
@@ -386,148 +229,6 @@ void showResult(int m, int k, int *out)
 	}        	
 }            	
 
-/*
-void launch(int *V, int *out, float time)
-{
-	int *d_V, *d_out;			// device copies
-	int *D;						// distance matrix
-	// compute the execution time
-	cudaEvent_t start, stop;
-	// create event
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
-	// record event
-	cudaEventRecord(start);
-	
-	// allocate space for devices copies
-	cudaMalloc((void **)&d_V, m*n*sizeof(int));
-	cudaMalloc((void **)&d_out, m*k*sizeof(int));
-	cudaMalloc((void **)&D, m*m*sizeof(int));
-	
-	// copy host values to devices copies
-	cudaMemcpy(d_V, V, m*n*sizeof(int), cudaMemcpyHostToDevice);
-	
-	int gridDimX = (int)(ceil((float)m/TILE_WIDTH));
-	int gridDimY = (int)(ceil((float)m/TILE_WIDTH));
-	
-	dim3 grid(gridDimX, gridDimY);
-	dim3 block(TILE_WIDTH, TILE_WIDTH);
-	
-	// launch knn() kernel on GPU
-	computeDist<<<grid, block>>>(m, n, d_V, D);
-	cudaDeviceSynchronize();
-	
-	int threadNum = (m<MAX_BLOCK_SIZE)? m: MAX_BLOCK_SIZE;
-	int ptrNumInSMEM = (m<MAX_PTRNUM_IN_SMEM)? m: MAX_PTRNUM_IN_SMEM;
-	knn<<<m, threadNum, 2*ptrNumInSMEM*sizeof(int)>>>(m, k, d_V, D, d_out);
-	
-	// copy result back to host
-	cudaMemcpy(out, d_out, m*k*sizeof(int), cudaMemcpyDeviceToHost);
-	
-	// cleanup
-	cudaFree(d_V);
-	cudaFree(d_out);
-	cudaFree(D);
-	
-	// record event and synchronize
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-//	float time;
-	// get event elapsed time
-	cudaEventElapsedTime(&time, start, stop);
-
-}
-
-int main(int argc, char *argv[]) 
-{ 
-	int m,n,k;
-	int i;
-	int *V, *out;				// host copies
-	int *d_V, *d_out;			// device copies
-	int *D;						
-	FILE *fp;
-	if(argc != 2)
-	{
-		printf("Usage: knn <inputfile>\n");
-		exit(1);
-	}
-	if((fp = fopen(argv[1], "r")) == NULL)
-	{
-		printf("Error open input file!\n");
-		exit(1);
-	}
-	while(fscanf(fp, "%d %d %d", &m, &n, &k) != EOF)
-	{
-		V = (int *) malloc(m*n*sizeof(int));
-		out = (int *) malloc(m*k*sizeof(int));
-
-		for(i=0; i<m*n; i++)
-		{
-			fscanf(fp, "%d", &V[i]);
-		}
-
-		// compute the execution time
-		cudaEvent_t start, stop;
-		// create event
-		cudaEventCreate(&start);
-		cudaEventCreate(&stop);
-		// record event
-		cudaEventRecord(start);
-
-		// allocate space for devices copies
-		cudaMalloc((void **)&d_V, m*n*sizeof(int));
-		cudaMalloc((void **)&d_out, m*k*sizeof(int));
-		cudaMalloc((void **)&D, m*m*sizeof(int));
-
-		// copy host values to devices copies
-		cudaMemcpy(d_V, V, m*n*sizeof(int), cudaMemcpyHostToDevice);
-
-		int gridDimX = (int)(ceil((float)m/TILE_WIDTH));
-		int gridDimY = (int)(ceil((float)m/TILE_WIDTH));
-
-		dim3 grid(gridDimX, gridDimY);
-		dim3 block(TILE_WIDTH, TILE_WIDTH);
-
-		// launch knn() kernel on GPU
-		computeDist<<<grid, block>>>(m, n, d_V, D);
-		cudaDeviceSynchronize();
-
-		int threadNum = (m<MAX_BLOCK_SIZE)? m: MAX_BLOCK_SIZE;
-		int ptrNumInSMEM = (m<MAX_PTRNUM_IN_SMEM)? m: MAX_PTRNUM_IN_SMEM;
-		knn<<<m, threadNum, 2*ptrNumInSMEM*sizeof(int)>>>(m, k, d_V, D, d_out);
-
-		// copy result back to host
-		cudaMemcpy(out, d_out, m*k*sizeof(int), cudaMemcpyDeviceToHost);
-
-		// cleanup
-		cudaFree(d_V);
-		cudaFree(d_out);
-		cudaFree(D);
-
-		// record event and synchronize
-		cudaEventRecord(stop);
-		cudaEventSynchronize(stop);
-		float time;
-		// get event elapsed time
-		cudaEventElapsedTime(&time, start, stop);
-
-		showResult(m, k, out);
-		if(m == 1024) {
-			printf("SMALL:");
-		} else if(m == 4096) {
-			printf("MIDDLE:");
-		} else if(m == 16384) {
-			printf("LARGE:");
-		}
-		printf("%f\n", time);
-
-		free(V);
-		free(out);
-	}
-	fclose(fp);
-	return 0;
-}
-*/
 
 pthread_barrier_t barr;
 
@@ -542,14 +243,7 @@ struct HYBctx{
 	int *d_out;
 	int *D;
 };
-/*
-void launch(struct HYBctx* ctx, int *A){
-	cudaMemcpy(ctx->dA, A, sizeof(int)*N, cudaMemcpyHostToDevice);
-	kernel<<<1, N>>>(ctx->dA);
-	cudaMemcpy(A, ctx->dA, sizeof(int)*N, cudaMemcpyDeviceToHost);
-}
-*/
-//void launch(struct HYBctx* ctx, int *V, int *out){
+
 void launch(struct HYBctx* ctx){
 
 	int m = ctx->m;
@@ -585,10 +279,6 @@ int cudaInit(int rank, struct HYBctx* ctx){
 		int k = ctx->k;
 		// allocate space for devices copies
 		cudaMalloc((void **)&ctx->d_V, m*n*sizeof(int));
-
-//		cudaMalloc((void **)&ctx->d_out, m*k*sizeof(int));
-//		cudaMalloc((void **)&ctx->D, m*m*sizeof(int));
-
 		cudaMalloc((void **)&ctx->D, (m/2)*m*sizeof(int));
 		cudaMalloc((void **)&ctx->d_out, (m/2)*k*sizeof(int));
 
@@ -619,41 +309,6 @@ void beforeStart(struct HYBctx* ctx){
 }
 
 double comtime;
-
-/*
-void* GPUthread(void* arg){
-	struct HYBctx* ctx = (struct HYBctx*)arg;
-	int A[N];
-	int i;
-	for(i = 0; i< N; i++) A[i] = ctx->id;
-	if(!cudaInit(ctx->id, ctx)) printf("GPU thread %d\n", ctx->id);
-	launch(ctx, A);
-	printf("GPU thread %d result: %d\n",ctx->id, A[0]);
-	cudaDown(ctx);
-	return NULL;
-}
-
-void beforeStart(struct HYBctx* ctx){
-	float *dA;
-	int i = 0;
-	while(1){
-		i = (i+1)%2;
-		cudaSetDevice(2*i);
-		if(cudaMalloc((void**)&dA, 1024*sizeof(float))){
-			continue;
-		}
-		else{
-			cudaGetDevice(&ctx[0].id);
-			if(ctx[0].id%2) continue;
-		}
-		break;
-	}
-	cudaGetDevice(&ctx[0].id);
-	cudaFree(dA);
-	ctx[1].id = ctx[0].id+1;
-	printf("you get device %d and %d\n",ctx[0].id, ctx[1].id);
-}
-*/
 
 void* GPUthread(void* arg){
 	struct HYBctx* ctx = (struct HYBctx*)arg;
@@ -748,16 +403,7 @@ int main(int argc, char* argv[]){
 
 	showResult(m, k, out);
 	printf("%f\n", comtime);
-/*
-	if(m == 1024) {
-		printf("SMALL:");
-	} else if(m == 4096) {
-		printf("MIDDLE:");
-	} else if(m == 16384) {
-		printf("LARGE:");
-	}
-	printf("%f\n", time);
-*/
+
 	free(V);
 	free(out);
 	fclose(fp);
