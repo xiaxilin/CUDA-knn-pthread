@@ -14,13 +14,6 @@
 #include<pthread.h>
 #include<time.h>
 
-//#define DEBUG
-#ifdef DEBUG
-#define TA_PRINT printf
-#else
-#define TA_PRINT(...) ;
-#endif
-
 #define INIT_MAX 10000000
 #define TILE_WIDTH 32
 #define TILE_DEPTH 128
@@ -305,7 +298,7 @@ void beforeStart(struct HYBctx* ctx){
 		break;
 	}
 	cudaFree(dA);
-	TA_PRINT("you get device %d\n",ctx->id);
+	printf("you get device %d\n",ctx->id);
 }
 
 double comtime;
@@ -317,7 +310,7 @@ void* GPUthread(void* arg){
 	if(ctx->id == 0) beforeStart(ctx);
 	pthread_barrier_wait(&barr);
 	if(ctx->id == 1) beforeStart(ctx);
-	if(!cudaInit(ctx->id, ctx)) TA_PRINT("GPU thread %d\n", ctx->id);
+	if(!cudaInit(ctx->id, ctx)) printf("GPU thread %d\n", ctx->id);
 	pthread_barrier_wait(&barr);
 	clock_gettime(CLOCK_REALTIME,&start);
 	pthread_barrier_wait(&barr);
@@ -328,7 +321,7 @@ void* GPUthread(void* arg){
 	clock_gettime(CLOCK_REALTIME,&end);
 	if(ctx->id == 0)
 		comtime = (double)(end.tv_sec-start.tv_sec)+(double)(end.tv_nsec-start.tv_nsec)/(double)1000000000L;
-//	TA_PRINT("GPU thread %d result: %d\n",ctx->id, A[0]);
+//	printf("GPU thread %d result: %d\n",ctx->id, A[0]);
 	cudaDown(ctx);
 	return NULL;
 }
@@ -388,7 +381,7 @@ int main(int argc, char* argv[]){
 	}
 	for(i = 0; i< GPU_num; i++)
 		pthread_join(((pthread_t*)pt)[i], NULL);
-        TA_PRINT("\t%f\n",comtime);
+        printf("\t%f\n",comtime);
 	pthread_barrier_destroy(&barr);
 
 /*
