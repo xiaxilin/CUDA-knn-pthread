@@ -1,9 +1,11 @@
-# k-nearest neighbor using CUDA
+# k-nearest neighbor in multiple GPUs using CUDA and pthread
 ## Compile the program
+```shell
 	$ make
+```
 ## Execute the program
+```shell
 	$ ./main <inputfile>
-
-No modification is made to the Makefile.
+```
 
 Shuai YUAN <yszheda@gmail.com>
